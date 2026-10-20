@@ -196,6 +196,9 @@ class UniformVelocityCommand(CommandTerm):
       enabled = server.gui.add_checkbox("Enable", initial_value=False)
 
       for label, max_val in axes:
+        # Keep within the max slider's bounds; a zero range (e.g. lin_vel_y=(0, 0)
+        # in a play config) would otherwise fail viser's range check.
+        max_val = max(max_val, 0.1)
         max_input = server.gui.add_slider(
           f"Max {label}",
           initial_value=max_val,

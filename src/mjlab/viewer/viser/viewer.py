@@ -34,6 +34,9 @@ from mjlab.viewer.viser.overlays import (
 )
 from mjlab.viewer.viser.scene import MjlabViserScene
 
+AUTO_FOLLOW_INTERVAL_MIN = 15.0
+"""Default interval of the "Auto-follow latest" checkpoint option, in minutes."""
+
 
 @dataclass
 class CheckpointManager:
@@ -270,6 +273,23 @@ class ViserPlayViewer(BaseViewer):
           else:
             self._actions.append((ViewerAction.FETCH_CHECKPOINT, "latest"))
 
+        # Periodically do what "Use Latest" does, e.g. to watch a training run.
+        self._ckpt_auto_follow = self._server.gui.add_checkbox(
+          "Auto-follow latest", initial_value=False
+        )
+        self._ckpt_auto_interval_min = self._server.gui.add_number(
+          "Check every (min)",
+          initial_value=AUTO_FOLLOW_INTERVAL_MIN,
+          min=0.1,
+          step=0.5,
+        )
+        self._ckpt_next_check = 0.0
+
+        @self._ckpt_auto_follow.on_update
+        def _(_) -> None:
+          # Check right away when enabled, then every interval.
+          self._ckpt_next_check = 0.0
+
       # Populate the dropdown on startup.
       self._actions.append((ViewerAction.FETCH_CHECKPOINT, "refresh"))
 
@@ -341,9 +361,20 @@ class ViserPlayViewer(BaseViewer):
     self._pending_update_reasons.add(UpdateReason.ACTION)
     self._sync_ui_state()
 
+  @staticmethod
+  def _auto_follow_due(enabled: bool, now: float, next_check: float) -> bool:
+    return enabled and now >= next_check
+
   @override
   def _process_actions(self) -> None:
     """Process queued actions and sync UI state."""
+    if self._ckpt_mgr is not None:
+      now = time.monotonic()
+      if self._auto_follow_due(
+        self._ckpt_auto_follow.value, now, self._ckpt_next_check
+      ):
+        self._actions.append((ViewerAction.FETCH_CHECKPOINT, "latest"))
+        self._ckpt_next_check = now + 60.0 * self._ckpt_auto_interval_min.value
     had_actions = bool(self._actions)
     super()._process_actions()
     if had_actions:

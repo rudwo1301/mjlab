@@ -23,6 +23,9 @@ Added
 - Added ``Mjlab-Velocity-Flat-Tocabi`` and ``Mjlab-Velocity-Rough-Tocabi``,
   porting the DYROS TOCABI velocity task with RAL 2025 simulation timing,
   observation history and domain randomization.
+- Added an "Auto-follow latest" option to the Viser viewer's Checkpoints tab that
+  periodically loads the newest checkpoint (every 15 minutes by default, adjustable
+  in the GUI), e.g. to watch a training run.
 - Added ``history_stride`` to ``ObservationTermCfg`` and
   ``ObservationGroupCfg`` to stack history entries K steps apart, covering a
   longer time window without growing the observation.
@@ -50,6 +53,8 @@ Changed
 Fixed
 ^^^^^
 
+- The Viser velocity joystick no longer fails to start when a command axis has a
+  zero range (e.g. ``lin_vel_y=(0.0, 0.0)``).
 - ``posture`` and ``variable_posture`` now pair each joint with its own ``std`` when
   ``asset_cfg.preserve_order=True``.
 - ``apply_body_impulse`` now applies ``body_point_offset`` in the body frame, as
