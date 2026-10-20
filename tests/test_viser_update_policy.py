@@ -69,6 +69,16 @@ def test_auto_follow_due():
   assert not ViserPlayViewer._auto_follow_due(True, now=100.0, next_check=900.0)
 
 
+def test_tick_skips_simulation_without_clients(monkeypatch):
+  monkeypatch.setattr("mjlab.viewer.viser.viewer.IDLE_TICK_SLEEP_S", 0.0)
+  viewer = MagicMock()
+  viewer._server.get_clients.return_value = {}
+  assert ViserPlayViewer.tick(viewer) is False
+  viewer._process_actions.assert_called_once()
+  viewer._step_physics.assert_not_called()
+  viewer.sync_env_to_viewer.assert_not_called()
+
+
 def test_scene_requires_live_refresh():
   """Base scene sets needs_update when contact overlays are visible."""
   model = mujoco.MjModel.from_xml_string("<mujoco><worldbody/></mujoco>")

@@ -25,7 +25,11 @@ Added
   observation history and domain randomization.
 - Added an "Auto-follow latest" option to the Viser viewer's Checkpoints tab that
   periodically loads the newest checkpoint (every 15 minutes by default, adjustable
-  in the GUI), e.g. to watch a training run.
+  in the GUI), e.g. to watch a training run. ``play --auto-follow True`` starts with
+  it enabled; ``--auto-follow-interval-min`` sets the interval.
+- The Viser viewer now pauses simulation and rendering while no browser is
+  connected, so a viewer left running beside a training run no longer competes
+  for the GPU. Queued actions such as checkpoint auto-follow still run.
 - Added ``history_stride`` to ``ObservationTermCfg`` and
   ``ObservationGroupCfg`` to stack history entries K steps apart, covering a
   longer time window without growing the observation.

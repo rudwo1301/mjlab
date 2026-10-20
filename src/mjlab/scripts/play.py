@@ -47,6 +47,11 @@ class PlayConfig:
   video_width: int | None = None
   camera: int | str | None = None
   viewer: Literal["auto", "native", "viser"] = "auto"
+  auto_follow: bool = False
+  """Viser only: start with "Auto-follow latest" on, periodically loading the newest
+  checkpoint next to ``checkpoint_file`` (e.g. while a run is training)."""
+  auto_follow_interval_min: float = 15.0
+  """Viser only: auto-follow check interval in minutes (adjustable in the GUI)."""
   no_terminations: bool = False
   """Disable all termination conditions (useful for viewing motions with dummy agents)."""
   log_root: str = "logs/rsl_rl"
@@ -287,10 +292,19 @@ def run_play(task_id: str, cfg: PlayConfig):
   else:
     resolved_viewer = cfg.viewer
 
+  if cfg.auto_follow and (resolved_viewer != "viser" or ckpt_manager is None):
+    print("[WARN]: --auto-follow needs the viser viewer and a trained checkpoint.")
+
   if resolved_viewer == "native":
     NativeMujocoViewer(env, policy).run()
   elif resolved_viewer == "viser":
-    ViserPlayViewer(env, policy, checkpoint_manager=ckpt_manager).run()
+    ViserPlayViewer(
+      env,
+      policy,
+      checkpoint_manager=ckpt_manager,
+      auto_follow=cfg.auto_follow,
+      auto_follow_interval_min=cfg.auto_follow_interval_min,
+    ).run()
   else:
     raise RuntimeError(f"Unsupported viewer backend: {resolved_viewer}")
 

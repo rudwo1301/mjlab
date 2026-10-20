@@ -37,6 +37,9 @@ from mjlab.viewer.viser.scene import MjlabViserScene
 AUTO_FOLLOW_INTERVAL_MIN = 15.0
 """Default interval of the "Auto-follow latest" checkpoint option, in minutes."""
 
+IDLE_TICK_SLEEP_S = 0.1
+"""Tick period while no browser is connected (simulation is paused meanwhile)."""
+
 
 @dataclass
 class CheckpointManager:
@@ -75,9 +78,13 @@ class ViserPlayViewer(BaseViewer):
     verbosity: VerbosityLevel = VerbosityLevel.SILENT,
     viser_server: viser.ViserServer | None = None,
     checkpoint_manager: CheckpointManager | None = None,
+    auto_follow: bool = False,
+    auto_follow_interval_min: float = AUTO_FOLLOW_INTERVAL_MIN,
   ) -> None:
     super().__init__(env, policy, frame_rate, verbosity)
     self._ckpt_mgr = checkpoint_manager
+    self._auto_follow_init = auto_follow
+    self._auto_follow_interval_init = auto_follow_interval_min
     self._term_overlays: ViserTermOverlays | None = None
     self._camera_overlays: ViserCameraOverlays | None = None
     self._debug_overlays: ViserDebugOverlays | None = None
@@ -275,11 +282,11 @@ class ViserPlayViewer(BaseViewer):
 
         # Periodically do what "Use Latest" does, e.g. to watch a training run.
         self._ckpt_auto_follow = self._server.gui.add_checkbox(
-          "Auto-follow latest", initial_value=False
+          "Auto-follow latest", initial_value=self._auto_follow_init
         )
         self._ckpt_auto_interval_min = self._server.gui.add_number(
           "Check every (min)",
-          initial_value=AUTO_FOLLOW_INTERVAL_MIN,
+          initial_value=self._auto_follow_interval_init,
           min=0.1,
           step=0.5,
         )
@@ -360,6 +367,17 @@ class ViserPlayViewer(BaseViewer):
 
     self._pending_update_reasons.add(UpdateReason.ACTION)
     self._sync_ui_state()
+
+  @override
+  def tick(self) -> bool:
+    if not self._server.get_clients():
+      # Nobody is watching: keep handling queued actions (e.g. checkpoint
+      # auto-follow) but skip simulation and rendering to free the GPU.
+      self._process_actions()
+      self._last_tick_time = time.perf_counter()
+      time.sleep(IDLE_TICK_SLEEP_S)
+      return False
+    return super().tick()
 
   @staticmethod
   def _auto_follow_due(enabled: bool, now: float, next_check: float) -> bool:
