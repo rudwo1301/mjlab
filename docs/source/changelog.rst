@@ -17,6 +17,9 @@ Added
   conditional nodes, which require CUDA 12.4 or newer.
 - Added ``RewardManager.term_rewards`` and ``RewardManager.get_term()`` for the
   per-term reward vector from the last step :issue:`1223`.
+- Added the DYROS TOCABI humanoid to the asset zoo
+  (``get_tocabi_robot_cfg``), with torque-controlled motor actuators whose
+  armature, damping and command delay follow the RAL 2025 TOCABI setup.
 
 Changed
 ^^^^^^^
