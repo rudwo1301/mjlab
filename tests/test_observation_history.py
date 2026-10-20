@@ -197,6 +197,53 @@ def test_history_accumulates_correctly(mock_env, simple_obs_func):
   assert torch.allclose(policy_obs[0], expected)
 
 
+@pytest.mark.parametrize("group_level", [False, True])
+def test_history_stride(mock_env, simple_obs_func, group_level):
+  """Strided history keeps every K-th step, always including the newest."""
+  if group_level:
+    group = ObservationGroupCfg(
+      terms={"obs1": ObservationTermCfg(func=simple_obs_func)},
+      history_length=3,
+      history_stride=2,
+      flatten_history_dim=False,
+    )
+  else:
+    term = ObservationTermCfg(
+      func=simple_obs_func,
+      history_length=3,
+      history_stride=2,
+      flatten_history_dim=False,
+    )
+    group = ObservationGroupCfg(terms={"obs1": term})
+  cfg = {"actor": group}
+
+  manager = ObservationManager(cfg, mock_env)
+  assert manager.group_obs_dim["actor"] == (3, 3)
+
+  # Counter is 1 after _prepare_terms; first compute (value=2) backfills.
+  manager.compute(update_history=True)
+  for _ in range(4):
+    manager.compute(update_history=True)  # values 3..6
+  policy_obs = manager.compute(update_history=True)["actor"]  # value 7
+  assert isinstance(policy_obs, torch.Tensor)
+  # Buffer holds [3, 4, 5, 6, 7]; stride 2 selects [3, 5, 7].
+  assert policy_obs[0, :, 0].tolist() == [3.0, 5.0, 7.0]
+
+
+def test_history_stride_must_be_positive(mock_env, simple_obs_func):
+  cfg = {
+    "actor": ObservationGroupCfg(
+      terms={
+        "obs1": ObservationTermCfg(
+          func=simple_obs_func, history_length=3, history_stride=0
+        ),
+      }
+    ),
+  }
+  with pytest.raises(ValueError, match="history_stride"):
+    ObservationManager(cfg, mock_env)
+
+
 def test_update_history_false_doesnt_modify_buffer(mock_env, simple_obs_func):
   """Test that update_history=False doesn't modify the buffer."""
 

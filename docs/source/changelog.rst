@@ -20,6 +20,9 @@ Added
 - Added the DYROS TOCABI humanoid to the asset zoo
   (``get_tocabi_robot_cfg``), with torque-controlled motor actuators whose
   armature, damping and command delay follow the RAL 2025 TOCABI setup.
+- Added ``history_stride`` to ``ObservationTermCfg`` and
+  ``ObservationGroupCfg`` to stack history entries K steps apart, covering a
+  longer time window without growing the observation.
 
 Changed
 ^^^^^^^

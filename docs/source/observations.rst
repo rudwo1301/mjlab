@@ -125,6 +125,11 @@ History buffers are cleared on environment reset. The first observation
 after reset is backfilled across all history slots, so the policy
 receives valid data from step zero.
 
+Setting ``history_stride=K`` spaces the stacked entries K steps apart,
+covering a longer time window without growing the observation. The newest
+entry is always included, so ``history_length=3, history_stride=2`` yields
+``[t-4, t-2, t]``.
+
 When ``flatten_history_dim=True`` and ``concatenate_terms=True``, mjlab
 uses **term-major** ordering: each term's full history is flattened
 before concatenating across terms.

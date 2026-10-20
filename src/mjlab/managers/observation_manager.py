@@ -57,6 +57,11 @@ class ObservationTermCfg(ManagerTermBaseCfg):
   history_length: int = 0
   """Number of past observations to keep in history. 0 = no history."""
 
+  history_stride: int = 1
+  """Spacing (in steps) between stacked history entries. The newest entry is always
+  included, so the history spans ``(history_length - 1) * history_stride + 1``
+  steps. 1 = consecutive steps."""
+
   flatten_history_dim: bool = True
   """Whether to flatten the history dimension into observation.
 
@@ -91,6 +96,10 @@ class ObservationGroupCfg:
   history_length: int | None = None
   """Group-level history length override. If set, applies to all terms in
   this group. If None, each term uses its own ``history_length`` setting."""
+
+  history_stride: int = 1
+  """Group-level history stride. Applied to all terms together with
+  ``history_length`` when that override is set."""
 
   flatten_history_dim: bool = True
   """Whether to flatten history into the observation dimension. If True,
@@ -377,10 +386,13 @@ class ObservationManager(ManagerBase):
         else:
           circular_buffer.backfill(obs, env_ids)
 
+        history = circular_buffer.buffer
+        if term_cfg.history_stride > 1:
+          history = history[:, :: term_cfg.history_stride]
         if term_cfg.flatten_history_dim:
-          group_obs[term_name] = circular_buffer.buffer.reshape(self._env.num_envs, -1)
+          group_obs[term_name] = history.reshape(self._env.num_envs, -1)
         else:
-          group_obs[term_name] = circular_buffer.buffer
+          group_obs[term_name] = history
       else:
         group_obs[term_name] = obs
 
@@ -460,7 +472,13 @@ class ObservationManager(ManagerBase):
           term_cfg.noise = None
         if group_cfg.history_length is not None:
           term_cfg.history_length = group_cfg.history_length
+          term_cfg.history_stride = group_cfg.history_stride
           term_cfg.flatten_history_dim = group_cfg.flatten_history_dim
+        if term_cfg.history_stride < 1:
+          raise ValueError(
+            f"Observation term '{term_name}' in group '{group_name}' has"
+            f" history_stride={term_cfg.history_stride}; it must be >= 1."
+          )
         self._group_obs_term_names[group_name].append(term_name)
         self._group_obs_term_cfgs[group_name].append(term_cfg)
         if hasattr(term_cfg.func, "reset") and callable(term_cfg.func.reset):
@@ -499,7 +517,7 @@ class ObservationManager(ManagerBase):
 
         if term_cfg.history_length > 0:
           group_entry_history_buffer[term_name] = CircularBuffer(
-            max_len=term_cfg.history_length,
+            max_len=(term_cfg.history_length - 1) * term_cfg.history_stride + 1,
             batch_size=self._env.num_envs,
             device=self._env.device,
           )
