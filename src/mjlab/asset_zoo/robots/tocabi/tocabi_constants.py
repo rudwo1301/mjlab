@@ -51,6 +51,14 @@ def get_spec() -> mujoco.MjSpec:
     spec.delete(actuator)
   for key in list(spec.keys):
     spec.delete(key)
+  # The included simulation_scene.xml sets solver options for the standalone
+  # simulator; mjlab ignores them on attach (MujocoCfg applies), so reset them to
+  # avoid attach-conflict warnings.
+  default = mujoco.MjSpec()
+  spec.option = default.option
+  spec.visual.map.znear = default.visual.map.znear
+  spec.njmax = default.njmax
+  spec.nconmax = default.nconmax
 
   spec.body("base_link").name = ROOT_BODY_NAME
 
