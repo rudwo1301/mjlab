@@ -34,6 +34,19 @@ Added
   env, e.g. to watch a velocity policy at a chosen speed.
 - TOCABI collision geoms are moved to geom group 3, so viewers hide them by
   default (the source XML places them in group 2 next to the visual meshes).
+- Added ``Mjlab-Velocity-Flat-Tocabi-HojaeGomtang``, a TOCABI flat velocity task
+  with the HojaeGomtang leg-policy MDP: absolute joint-position PD actions,
+  filtered proprioception without base linear velocity, a randomized step period,
+  its 24 reward terms and terminations, and its PPO hyperparameters.
+  It also includes the HojaeGomtang left/right mirror loss in a PPO subclass
+  (``mjlab.tasks.tocabi.rl.HojaeGomtangPPO``) and two scheduled pelvis pushes per
+  episode, ramped in by a curriculum.
+- Added ``Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-Lipschitz``, the same task with
+  the HojaeGomtang adaptive Lipschitz loss.
+- Added ``Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V2``. Every episode starts
+  with 0.4 s of double support in which the weight moves onto the first stance
+  foot before the gait clock runs; the clock observation is scaled by a 0 to 1
+  ramp over that window. The hip roll bound penalty charges only the excess.
 - Added ``history_stride`` to ``ObservationTermCfg`` and
   ``ObservationGroupCfg`` to stack history entries K steps apart, covering a
   longer time window without growing the observation.
