@@ -19,9 +19,9 @@ Added
   per-term reward vector from the last step :issue:`1223`.
 - Added the DYROS TOCABI humanoid to the asset zoo
   (``get_tocabi_robot_cfg``), with torque-controlled motor actuators whose
-  armature, damping and command delay follow the RAL 2025 TOCABI setup.
+  armature, damping and command delay follow the HojaeGomtang TOCABI setup.
 - Added ``Mjlab-Velocity-Flat-Tocabi`` and ``Mjlab-Velocity-Rough-Tocabi``,
-  porting the DYROS TOCABI velocity task with RAL 2025 simulation timing,
+  porting the DYROS TOCABI velocity task with HojaeGomtang simulation timing,
   observation history and domain randomization.
 - Added an "Auto-follow latest" option to the Viser viewer's Checkpoints tab that
   periodically loads the newest checkpoint (every 15 minutes by default, adjustable
@@ -30,6 +30,10 @@ Added
 - The Viser viewer now pauses simulation and rendering while no browser is
   connected, so a viewer left running beside a training run no longer competes
   for the GPU. Queued actions such as checkpoint auto-follow still run.
+- Added ``play --velocity-command vx,vy,wz`` to fix the velocity command of every
+  env, e.g. to watch a velocity policy at a chosen speed.
+- TOCABI collision geoms are moved to geom group 3, so viewers hide them by
+  default (the source XML places them in group 2 next to the visual meshes).
 - Added ``history_stride`` to ``ObservationTermCfg`` and
   ``ObservationGroupCfg`` to stack history entries K steps apart, covering a
   longer time window without growing the observation.

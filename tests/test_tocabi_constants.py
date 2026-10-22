@@ -54,7 +54,10 @@ def test_actuator_parameters(tocabi_model, actuator_cfg) -> None:
 
 
 def test_command_delay_groups(tocabi_entity) -> None:
-  """Legs and active arm joints are delayed, locked joints are not (RAL)."""
+  """Legs and active arm joints are delayed, locked joints are not.
+
+  Follows HojaeGomtang.
+  """
   delayed_expr = r".*_(HipYaw|HipRoll|HipPitch|Knee|AnklePitch|AnkleRoll"
   delayed_expr += r"|Shoulder1|Shoulder2|Shoulder3|Elbow)_Joint$"
   for actuator_cfg in tocabi_constants.TOCABI_ARTICULATION.actuators:
@@ -74,6 +77,16 @@ def test_keyframe_joint_positions(tocabi_entity, tocabi_model) -> None:
   for joint_name, value in zip(tocabi_entity.joint_names, values, strict=True):
     qpos_idx = tocabi_model.joint(joint_name).qposadr[0]
     np.testing.assert_allclose(key.qpos[qpos_idx], value, rtol=1e-5)
+
+
+def test_collision_geoms_hidden_by_default(tocabi_model) -> None:
+  """Collision geoms sit in group 3, which viewers hide by default."""
+  for i in range(tocabi_model.ngeom):
+    collides = tocabi_model.geom_contype[i] or tocabi_model.geom_conaffinity[i]
+    if collides:
+      assert tocabi_model.geom_group[i] == tocabi_constants.COLLISION_GEOM_GROUP
+    else:
+      assert tocabi_model.geom_group[i] < 3
 
 
 def test_feet_above_ground_at_init(tocabi_model) -> None:

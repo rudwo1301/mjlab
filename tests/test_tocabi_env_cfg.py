@@ -10,7 +10,7 @@ SINGLE_STEP_TERMS = {"clock_input", "velocity_commands", "actions", "height_scan
 @pytest.mark.parametrize(
   "make_cfg", [env_cfgs.tocabi_rough_env_cfg, env_cfgs.tocabi_flat_env_cfg]
 )
-def test_actor_history_follows_ral(make_cfg) -> None:
+def test_actor_history_follows_hojae_gomtang(make_cfg) -> None:
   """Proprioception keeps 40 steps; clock, command and last action keep one."""
   cfg = make_cfg()
   for name, term in cfg.observations["actor"].terms.items():

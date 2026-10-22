@@ -2,7 +2,7 @@
 
 Task structure (observations, rewards, commands, terminations) follows the DYROS
 IsaacLab TOCABI locomotion task. Simulation timing, observation history and domain
-randomization follow the sim-to-real validated RAL 2025 TOCABI setup.
+randomization follow the sim-to-real validated HojaeGomtang TOCABI setup.
 """
 
 from dataclasses import replace
@@ -76,7 +76,8 @@ TWIST_RANGES = mdp.UniformVelocityCommandCfg.Ranges(
 """Training velocity command ranges."""
 
 ACTOR_HISTORY_LENGTH = 40
-"""RAL actor history: 40 consecutive steps, except clock, command and last action."""
+"""HojaeGomtang actor history: 40 consecutive steps, except clock, command and last
+action."""
 
 
 def tocabi_rough_env_cfg(
@@ -88,7 +89,7 @@ def tocabi_rough_env_cfg(
 
   Args:
     play: Build the evaluation variant.
-    encoder_bias: Randomize a per-episode joint encoder bias. RAL deployment
+    encoder_bias: Randomize a per-episode joint encoder bias. HojaeGomtang deployment
       training had this off (enable_obs_joint_pos_episode_bias=False).
     height_scan_in_actor: Give the actor the ground-truth height map. A policy
       trained with it needs a height map on the real robot too. If False, only the
@@ -137,8 +138,9 @@ def tocabi_rough_env_cfg(
   ##
 
   hist = ACTOR_HISTORY_LENGTH
-  # Not ported (RAL): low-pass filters on observed base angular velocity (60 Hz)
-  # and joint velocity (25 Hz). Add them if the deployment code filters these too.
+  # Not ported (HojaeGomtang): low-pass filters on observed base angular velocity
+  # (60 Hz) and joint velocity (25 Hz). Add them if the deployment code filters
+  # these too.
   actor_terms = {
     "base_lin_vel": ObservationTermCfg(
       func=mdp.base_lin_vel, noise=Unoise(n_min=-0.03, n_max=0.03), history_length=hist
@@ -175,8 +177,8 @@ def tocabi_rough_env_cfg(
     # Ground-truth height map, not camera data: 17 x 11 = 187 downward rays on a
     # 1.6 x 1.0 m yaw-aligned grid around the pelvis, giving pelvis height above
     # each hit point. Fed as a flat vector straight into the MLP, without history
-    # (RAL has no height scan, and 40 steps would add ~7.5k inputs). DYROS fed 5
-    # strided frames. Removed in the flat task.
+    # (HojaeGomtang has no height scan, and 40 steps would add ~7.5k inputs). DYROS
+    # fed 5 strided frames. Removed in the flat task.
     "height_scan": ObservationTermCfg(
       func=envs_mdp.height_scan,
       params={"sensor_name": "terrain_scan"},
@@ -208,7 +210,7 @@ def tocabi_rough_env_cfg(
   # Actions
   ##
 
-  # Not ported: RAL joint velocity limits (20-50 rad/s, enforced by the PhysX
+  # Not ported: HojaeGomtang joint velocity limits (20-50 rad/s, enforced by the PhysX
   # solver; MuJoCo has no equivalent) and DYROS ERFI random force injection (off by
   # default in DYROS).
   actions: dict[str, ActionTermCfg] = {
@@ -246,12 +248,12 @@ def tocabi_rough_env_cfg(
   }
 
   ##
-  # Events (RAL deployment randomization)
+  # Events (HojaeGomtang deployment randomization)
   ##
 
   events = {
-    # Ground friction * robot friction range, as in RAL. Foot geoms have contact
-    # priority, so their friction alone sets the foot-ground value.
+    # Ground friction * robot friction range, as in HojaeGomtang. Foot geoms have
+    # contact priority, so their friction alone sets the foot-ground value.
     # (Python's 0.8 * (0.6, 1.0) would repeat the tuple, so scale each bound.)
     "foot_friction": EventTermCfg(
       mode="startup",
@@ -291,14 +293,14 @@ def tocabi_rough_env_cfg(
         "ranges": (0.5, 1.5),
       },
     ),
-    # RAL's load-dependent PhysX friction has no MuJoCo equivalent; randomize a
+    # HojaeGomtang's load-dependent PhysX friction has no MuJoCo equivalent; randomize a
     # constant leg friction instead.
     "leg_friction": EventTermCfg(
       mode="reset",
       func=dr.joint_friction,
       params={"asset_cfg": LEGS, "operation": "abs", "ranges": (0.0, 12.0)},
     ),
-    # Base damping is 1.0, so this spans [0.1, 4.0] as in RAL.
+    # Base damping is 1.0, so this spans [0.1, 4.0] as in HojaeGomtang.
     "joint_damping": EventTermCfg(
       mode="reset",
       func=dr.joint_damping,
@@ -331,7 +333,7 @@ def tocabi_rough_env_cfg(
         "asset_cfg": SceneEntityCfg("robot", joint_names=(".*",)),
       },
     ),
-    # Not ported (RAL): scheduled pushes, i.e. force/torque pulses (+-50 N,
+    # Not ported (HojaeGomtang): scheduled pushes, i.e. force/torque pulses (+-50 N,
     # +-1.5 N·m) in two windows per gait cycle, ramped in by a curriculum.
   }
   if not encoder_bias:

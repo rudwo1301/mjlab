@@ -11,11 +11,12 @@ from typing import Literal
 import torch
 import tyro
 
-from mjlab.envs import ManagerBasedRlEnv
+from mjlab.envs import ManagerBasedRlEnv, ManagerBasedRlEnvCfg
 from mjlab.rl import MjlabOnPolicyRunner, RslRlVecEnvWrapper
 from mjlab.scripts._cli import maybe_print_top_level_help
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.tasks.tracking.mdp import MotionCommandCfg
+from mjlab.tasks.velocity.mdp import UniformVelocityCommandCfg
 from mjlab.utils.os import get_wandb_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
 from mjlab.utils.wrappers import VideoRecorder
@@ -52,6 +53,9 @@ class PlayConfig:
   checkpoint next to ``checkpoint_file`` (e.g. while a run is training)."""
   auto_follow_interval_min: float = 15.0
   """Viser only: auto-follow check interval in minutes (adjustable in the GUI)."""
+  velocity_command: tuple[float, float, float] | None = None
+  """Fix the velocity command of every env to (lin_vel_x, lin_vel_y, ang_vel_z),
+  e.g. ``--velocity-command 0.5,0.0,0.0``. Velocity tasks only."""
   no_terminations: bool = False
   """Disable all termination conditions (useful for viewing motions with dummy agents)."""
   log_root: str = "logs/rsl_rl"
@@ -61,6 +65,31 @@ class PlayConfig:
   _demo_mode: tyro.conf.Suppress[bool] = False
 
 
+def fix_velocity_command(
+  env_cfg: ManagerBasedRlEnvCfg, command: tuple[float, float, float]
+) -> None:
+  """Make every velocity command term output ``command`` in all envs."""
+  vx, vy, wz = command
+  terms = [
+    t for t in env_cfg.commands.values() if isinstance(t, UniformVelocityCommandCfg)
+  ]
+  if not terms:
+    raise ValueError("--velocity-command needs a task with a velocity command.")
+  for term in terms:
+    term.ranges.lin_vel_x = (vx, vx)
+    term.ranges.lin_vel_y = (vy, vy)
+    term.ranges.ang_vel_z = (wz, wz)
+    term.ranges.heading = None
+    term.heading_command = False
+    term.rel_standing_envs = 0.0
+    term.rel_heading_envs = 0.0
+    term.rel_forward_envs = 0.0
+    term.rel_world_envs = 0.0
+  # Curricula could widen the ranges again.
+  env_cfg.curriculum = {}
+  print(f"[INFO]: Velocity command fixed to {command}")
+
+
 def run_play(task_id: str, cfg: PlayConfig):
   configure_torch_backends()
 
@@ -68,6 +97,9 @@ def run_play(task_id: str, cfg: PlayConfig):
 
   env_cfg = load_env_cfg(task_id, play=True)
   agent_cfg = load_rl_cfg(task_id)
+
+  if cfg.velocity_command is not None:
+    fix_velocity_command(env_cfg, cfg.velocity_command)
 
   DUMMY_MODE = cfg.agent in {"zero", "random"}
   TRAINED_MODE = not DUMMY_MODE

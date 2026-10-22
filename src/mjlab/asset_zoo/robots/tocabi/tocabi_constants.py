@@ -3,7 +3,7 @@
 The MJCF is copied verbatim from ``dyros_tocabi_v2/tocabi_description``
 (``mujoco_model/dyros_tocabi_ec2_small.xml``). Scene elements, XML actuators and
 keyframes are stripped in :func:`get_spec`. Actuator and joint parameters follow
-the RAL 2025 TOCABI config rather than the XML joint classes.
+the HojaeGomtang TOCABI config rather than the XML joint classes.
 """
 
 from pathlib import Path
@@ -32,6 +32,9 @@ assert TOCABI_XML.exists()
 
 # The XML names the root body "base_link"; the URDF and IsaacLab use "Pelvis_Link".
 ROOT_BODY_NAME = "Pelvis_Link"
+
+# Viewers show geom groups 0-2 by default; collision geoms go to 3, as for G1.
+COLLISION_GEOM_GROUP = 3
 
 
 def get_spec() -> mujoco.MjSpec:
@@ -62,12 +65,14 @@ def get_spec() -> mujoco.MjSpec:
 
   spec.body("base_link").name = ROOT_BODY_NAME
 
-  # Name collision geoms so CollisionCfg can address them.
+  # Name collision geoms so CollisionCfg can address them, and move them to a group
+  # the viewers hide by default (the XML puts them in group 2, next to the meshes).
   for body in spec.bodies:
     i = 0
     for geom in body.geoms:
       if geom.contype != 0 or geom.conaffinity != 0:
         geom.name = f"{body.name}_collision{i}"
+        geom.group = COLLISION_GEOM_GROUP
         i += 1
 
   return spec
@@ -77,14 +82,15 @@ def get_spec() -> mujoco.MjSpec:
 # Actuator config.
 ##
 
-# Values follow the RAL 2025 TOCABI config (LearningHumanoidArmMotion, tocabi
+# Values follow the HojaeGomtang TOCABI config (LearningHumanoidArmMotion, tocabi
 # branch, extensions/tocabi/assets), which has been validated sim-to-real.
-# - Damping: RAL uses explicit PD actuators with zero stiffness and damping 1.0,
-#   i.e. a -1.0 * qd torque on every joint. Here this is passive joint damping.
-# - Friction: RAL uses a load-dependent PhysX friction coefficient (0.3 on the
-#   legs), which MuJoCo cannot represent. Constant friction is zero and joint
+# - Damping: HojaeGomtang uses explicit PD actuators with zero stiffness and
+#   damping 1.0, i.e. a -1.0 * qd torque on every joint. Here this is passive
+#   joint damping.
+# - Friction: HojaeGomtang uses a load-dependent PhysX friction coefficient (0.3
+#   on the legs), which MuJoCo cannot represent. Constant friction is zero and joint
 #   friction is covered by domain randomization in the task instead.
-# - Delay: legs and actively controlled arm joints (DelayedPDActuator in RAL)
+# - Delay: legs and actively controlled arm joints (DelayedPDActuator in HojaeGomtang)
 #   get 0-2 physics steps of command delay; locked joints have none.
 
 TOCABI_VISCOUS_DAMPING = 1.0
