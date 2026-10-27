@@ -54,6 +54,10 @@ Added
 - Added ``-Startup-AnkleFric`` and ``-V7-AnkleFric`` HojaeGomtang tasks, which
   randomize ankle roll frictionloss over 0-25 N·m (``ankle_roll_friction_range``)
   to cover the deployment simulator.
+- Added ``Mjlab-Tracking-Flat-Tocabi`` and ``-Privileged``, motion tracking for
+  TOCABI with the HojaeGomtang robot, actions and randomization, and a slip
+  penalty on the reference's planted feet. The motion file is passed with
+  ``--env.commands.motion.motion-file``.
 - Added ``history_stride`` to ``ObservationTermCfg`` and
   ``ObservationGroupCfg`` to stack history entries K steps apart, covering a
   longer time window without growing the observation.

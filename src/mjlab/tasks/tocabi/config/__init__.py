@@ -1,10 +1,16 @@
 from mjlab.tasks.registry import register_mjlab_task
 from mjlab.tasks.tocabi.rl import HojaeGomtangOnPolicyRunner
+from mjlab.tasks.tracking.rl import MotionTrackingOnPolicyRunner
 from mjlab.tasks.velocity.rl import VelocityOnPolicyRunner
 
 from .env_cfgs import tocabi_flat_env_cfg, tocabi_rough_env_cfg
 from .hojae_gomtang_env_cfgs import tocabi_hojae_gomtang_flat_env_cfg
-from .rl_cfg import tocabi_hojae_gomtang_ppo_runner_cfg, tocabi_ppo_runner_cfg
+from .rl_cfg import (
+  tocabi_hojae_gomtang_ppo_runner_cfg,
+  tocabi_ppo_runner_cfg,
+  tocabi_tracking_ppo_runner_cfg,
+)
+from .tracking_env_cfgs import tocabi_flat_tracking_env_cfg
 
 register_mjlab_task(
   task_id="Mjlab-Velocity-Rough-Tocabi",
@@ -185,4 +191,20 @@ register_mjlab_task(
   ),
   rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
   runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+register_mjlab_task(
+  task_id="Mjlab-Tracking-Flat-Tocabi",
+  env_cfg=tocabi_flat_tracking_env_cfg(),
+  play_env_cfg=tocabi_flat_tracking_env_cfg(play=True),
+  rl_cfg=tocabi_tracking_ppo_runner_cfg(),
+  runner_cls=MotionTrackingOnPolicyRunner,
+)
+
+register_mjlab_task(
+  task_id="Mjlab-Tracking-Flat-Tocabi-Privileged",
+  env_cfg=tocabi_flat_tracking_env_cfg(privileged_actor=True),
+  play_env_cfg=tocabi_flat_tracking_env_cfg(play=True, privileged_actor=True),
+  rl_cfg=tocabi_tracking_ppo_runner_cfg(),
+  runner_cls=MotionTrackingOnPolicyRunner,
 )
