@@ -48,3 +48,141 @@ register_mjlab_task(
   rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
   runner_cls=HojaeGomtangOnPolicyRunner,
 )
+
+# V2 plus a stance-leg hip roll bound widened to 0.15 rad.
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V3",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=20, linear_hip_roll=True, stance_hip_roll_bound=0.15
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True, startup_steps=20, linear_hip_roll=True, stance_hip_roll_bound=0.15
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+# V3 plus a lateral CoM sway reference over the stance foot (4 cm).
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V4",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+# V4 plus a squared ankle roll penalty, so the sway comes from the hips.
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V5",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+# V3 plus the ankle roll penalty, without the CoM sway reward.
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V6",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    ankle_roll_weight=200.0,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    ankle_roll_weight=200.0,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+# V5 plus a squared pelvis roll penalty.
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V7",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+# Deployment-MJCF friction: ankle roll frictionloss randomized over 0-25 N·m.
+_ANKLE_FRICTION = (0.0, 25.0)
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-Startup-AnkleFric",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=20, ankle_roll_friction_range=_ANKLE_FRICTION
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True, startup_steps=20, ankle_roll_friction_range=_ANKLE_FRICTION
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V7-AnkleFric",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)

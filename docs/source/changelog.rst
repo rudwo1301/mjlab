@@ -47,6 +47,13 @@ Added
   with 0.4 s of double support in which the weight moves onto the first stance
   foot before the gait clock runs; the clock observation is scaled by a 0 to 1
   ramp over that window. The hip roll bound penalty charges only the excess.
+- Added HojaeGomtang reward variants ``Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V3``
+  to ``-V7``: a stance-leg hip roll bound that follows the gait phase (V3), a
+  lateral CoM sway reference (V4), squared ankle roll (V5, V6) and pelvis roll
+  (V7) penalties.
+- Added ``-Startup-AnkleFric`` and ``-V7-AnkleFric`` HojaeGomtang tasks, which
+  randomize ankle roll frictionloss over 0-25 N·m (``ankle_roll_friction_range``)
+  to cover the deployment simulator.
 - Added ``history_stride`` to ``ObservationTermCfg`` and
   ``ObservationGroupCfg`` to stack history entries K steps apart, covering a
   longer time window without growing the observation.

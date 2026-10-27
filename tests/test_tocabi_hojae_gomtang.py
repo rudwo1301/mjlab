@@ -114,6 +114,17 @@ def test_linear_hip_roll_penalty_charges_only_the_excess(env) -> None:
   step = hg.hip_roll_threshold_penalty(env, asset_cfg)
   torch.testing.assert_close(linear, torch.full_like(linear, -0.02))
   torch.testing.assert_close(step, torch.full_like(step, -1.02))
+
+  # Mid left swing: the right (stance) leg may roll inward to the wider bound,
+  # the left (swing) leg keeps the original one.
+  term = env.command_manager.get_term("step_phase")
+  assert isinstance(term, hg.StepPhaseCommand)
+  term.phase_offset[:] = 0
+  env.episode_length_buf[:] = term.full_step_period[:, 0] // 4
+  pos = torch.tensor([[-0.08, 0.1]], device=env.device).expand(env.num_envs, -1)
+  robot.write_joint_position_to_sim(pos, joint_ids=torch.tensor(ids, device=env.device))
+  phased = hg.hip_roll_threshold_penalty(env, asset_cfg, linear=True, stance_bound=0.15)
+  torch.testing.assert_close(phased, torch.full_like(phased, -0.02), atol=1e-3, rtol=0)
   env.reset()
 
 

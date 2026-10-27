@@ -484,17 +484,32 @@ def hip_roll_threshold_penalty(
   left_min: float = -0.06,
   right_max: float = 0.06,
   linear: bool = False,
+  stance_bound: float | None = None,
+  command_name: str = "step_phase",
 ) -> torch.Tensor:
   """Penalize left hip roll below ``left_min`` and right above ``right_max``.
 
   The original charges 1 plus the excess as soon as a bound is crossed; with
-  ``linear`` only the excess is charged. ``asset_cfg`` joints are ordered
-  (left, right).
+  ``linear`` only the excess is charged. With ``stance_bound`` the stance leg's
+  inward bound widens to that magnitude, so the pelvis can shift over the stance
+  foot while the swing leg keeps the original bound. ``asset_cfg`` joints are
+  ordered (left, right).
   """
   asset: Entity = env.scene[asset_cfg.name]
   q = asset.data.joint_pos[:, asset_cfg.joint_ids]
-  left = torch.relu(left_min - q[:, 0])
-  right = torch.relu(q[:, 1] - right_max)
+  lo = torch.full_like(q[:, 0], left_min)
+  hi = torch.full_like(q[:, 1], right_max)
+  if stance_bound is not None:
+    term = _phase_term(env, command_name)
+    # Right stance weight, smoothly 1 in the first half cycle and 0 in the second.
+    right_stance = 0.5 * (1.0 + smooth_sqr_wave(term.phase, eps=0.1))
+    right_stance = torch.where(
+      term.in_startup, term.first_stance_foot.float(), right_stance
+    )
+    lo = torch.lerp(lo, torch.full_like(lo, -stance_bound), 1.0 - right_stance)
+    hi = torch.lerp(hi, torch.full_like(hi, stance_bound), right_stance)
+  left = torch.relu(lo - q[:, 0])
+  right = torch.relu(q[:, 1] - hi)
   if linear:
     return -(left + right)
   return -((left > 0.0) * (1.0 + left) + (right > 0.0) * (1.0 + right))
@@ -595,6 +610,45 @@ def contact_schedule_reward(
   walking = (contact[:, 1] - contact[:, 0]) * schedule
   standing = contact[:, 0] + contact[:, 1] - 1.0
   return torch.where(term.in_startup, standing, walking)
+
+
+def joint_pos_square_penalty(
+  env: ManagerBasedRlEnv, asset_cfg: SceneEntityCfg
+) -> torch.Tensor:
+  """-sum(q^2) of the selected joints (zero is their default position)."""
+  asset: Entity = env.scene[asset_cfg.name]
+  return -torch.sum(torch.square(asset.data.joint_pos[:, asset_cfg.joint_ids]), dim=1)
+
+
+def base_roll_penalty(
+  env: ManagerBasedRlEnv, asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG
+) -> torch.Tensor:
+  """-g_y^2 of the projected gravity, about sin^2 of the base roll angle."""
+  asset: Entity = env.scene[asset_cfg.name]
+  return -torch.square(asset.data.projected_gravity_b[:, 1])
+
+
+def com_lateral_tracking_reward(
+  env: ManagerBasedRlEnv,
+  command_name: str,
+  asset_cfg: SceneEntityCfg,
+  amplitude: float = 0.04,
+  sigma: float = 0.03,
+) -> torch.Tensor:
+  """Reward the whole-body CoM for following a lateral sway over the stance foot.
+
+  In the yaw frame, relative to the midpoint of the feet (``asset_cfg`` bodies),
+  the reference is ``-amplitude * sin(2 pi phase)``: toward the right foot while
+  the left swings and toward the left foot after. Off during startup.
+  """
+  asset: Entity = env.scene[asset_cfg.name]
+  com_w = asset.data.data.subtree_com[:, asset.data.indexing.root_body_id]
+  mid_w = asset.data.body_link_pos_w[:, asset_cfg.body_ids].mean(dim=1)
+  rel = quat_apply_inverse(yaw_quat(asset.data.root_link_quat_w), com_w - mid_w)
+  term = _phase_term(env, command_name)
+  target = -amplitude * torch.sin(2.0 * math.pi * term.phase)
+  reward = torch.exp(-torch.square((rel[:, 1] - target) / sigma))
+  return reward * (~term.in_startup).float()
 
 
 def startup_weight_shift_reward(

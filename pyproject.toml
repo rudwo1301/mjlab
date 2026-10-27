@@ -157,6 +157,7 @@ pythonVersion = "3.10"
 venvPath = "."
 venv = ".venv"
 ignore = ["./typings", "./src/mjlab/utils/lab_api", "./docs"]
+exclude = ["third_party", "logs", "data", "**/.venv", "**/__pycache__"]
 stubPath = "typings"
 
 [tool.ty.environment]

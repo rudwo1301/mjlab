@@ -60,6 +60,9 @@ HIP_YAW_ROLL = SceneEntityCfg(
   joint_names=HIP_YAW.joint_names + HIP_ROLL.joint_names,  # type: ignore[operator]
   preserve_order=True,
 )
+ANKLE_ROLL = SceneEntityCfg(
+  "robot", joint_names=tuple(f"{s}_AnkleRoll_Joint" for s in _LR), preserve_order=True
+)
 KNEES = SceneEntityCfg(
   "robot", joint_names=tuple(f"{s}_Knee_Joint" for s in _LR), preserve_order=True
 )
@@ -82,6 +85,11 @@ def tocabi_hojae_gomtang_flat_env_cfg(
   encoder_bias: bool = True,
   startup_steps: int = 0,
   linear_hip_roll: bool = False,
+  stance_hip_roll_bound: float | None = None,
+  com_sway_amplitude: float | None = None,
+  ankle_roll_weight: float = 0.0,
+  base_roll_weight: float = 0.0,
+  ankle_roll_friction_range: tuple[float, float] | None = None,
 ) -> ManagerBasedRlEnvCfg:
   """Create the TOCABI flat velocity configuration with the HojaeGomtang MDP.
 
@@ -94,6 +102,18 @@ def tocabi_hojae_gomtang_flat_env_cfg(
       clock starts (0 disables, as in the original).
     linear_hip_roll: Charge only the excess past the hip roll bounds instead of
       the original constant-plus-excess penalty.
+    stance_hip_roll_bound: Widen the stance leg's inward hip roll bound to this
+      magnitude [rad], following the gait phase (None keeps both bounds fixed).
+    com_sway_amplitude: Add a reward for the CoM following a lateral sway of
+      this amplitude [m] over the stance foot (None disables).
+    ankle_roll_weight: Weight of a squared ankle roll angle penalty, so lateral
+      weight shift comes from the hips rather than leaning on the ankles (0
+      disables).
+    base_roll_weight: Weight of a squared pelvis roll penalty, on top of the
+      original tilt reward (0 disables).
+    ankle_roll_friction_range: Separate frictionloss range [N·m] for the ankle
+      roll joints, e.g. (0, 25) to cover the 22 N·m of the deployment MJCF. The
+      other leg joints keep their range (None: one range for all leg joints).
   """
   cfg = tocabi_flat_env_cfg(play=play, encoder_bias=encoder_bias)
 
@@ -315,6 +335,8 @@ def tocabi_hojae_gomtang_flat_env_cfg(
         "left_min": -0.06,
         "right_max": 0.06,
         "linear": linear_hip_roll,
+        "stance_bound": stance_hip_roll_bound,
+        "command_name": "step_phase",
       },
     ),
     "foot_yaw_frame_y_dist": RewardTermCfg(
@@ -352,6 +374,22 @@ def tocabi_hojae_gomtang_flat_env_cfg(
     ),
     "termination": RewardTermCfg(func=hg.termination_penalty, weight=20.0),
   }
+  if com_sway_amplitude is not None:
+    cfg.rewards["com_lateral_tracking"] = RewardTermCfg(
+      func=hg.com_lateral_tracking_reward,
+      weight=5.0,
+      params={**phase, "asset_cfg": FEET, "amplitude": com_sway_amplitude},
+    )
+  if ankle_roll_weight > 0.0:
+    cfg.rewards["ankle_roll"] = RewardTermCfg(
+      func=hg.joint_pos_square_penalty,
+      weight=ankle_roll_weight,
+      params={"asset_cfg": ANKLE_ROLL},
+    )
+  if base_roll_weight > 0.0:
+    cfg.rewards["base_roll"] = RewardTermCfg(
+      func=hg.base_roll_penalty, weight=base_roll_weight
+    )
   if startup_steps > 0:
     cfg.rewards["startup_weight_shift"] = RewardTermCfg(
       func=hg.startup_weight_shift_reward,
@@ -403,6 +441,22 @@ def tocabi_hojae_gomtang_flat_env_cfg(
         "halfspan_steps": (0, 2),
         "curriculum_iterations": (3000, 10000),
         "steps_per_iteration": 24,
+      },
+    )
+
+  if ankle_roll_friction_range is not None:
+    leg_friction = cfg.events["leg_friction"]
+    leg_friction.params["asset_cfg"] = SceneEntityCfg(
+      "robot",
+      joint_names=tuple(n for n in LEG_JOINT_NAMES if "AnkleRoll" not in n),
+    )
+    cfg.events["ankle_roll_friction"] = EventTermCfg(
+      mode="reset",
+      func=leg_friction.func,
+      params={
+        **leg_friction.params,
+        "asset_cfg": ANKLE_ROLL,
+        "ranges": ankle_roll_friction_range,
       },
     )
 
