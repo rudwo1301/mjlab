@@ -193,6 +193,158 @@ register_mjlab_task(
   runner_cls=HojaeGomtangOnPolicyRunner,
 )
 
+# Hip roll frictionloss randomized over 10-25 N·m on top of the ankle roll range: the
+# real robot showed more hip roll friction than the deployment MJCF (9.9 N·m).
+_HIP_FRICTION = (10.0, 25.0)
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-Startup-HipFric",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=20,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=20,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V7-HipFric",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=20,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+# A visible startup: 0.8 s of double support in which the CoM moves 4 cm toward the
+# first stance foot (the 0.4 s startup shifted it about 0.5 cm).
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-Startup-ShiftStartup",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=40,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=40,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V7-ShiftStartup",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=40,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=40,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+# ShiftStartup plus a penalty on the gait-cycle mean lateral velocity error: a 5 cm/s
+# drift costs 0.3 of the lateral tracking weight (10).
+_DRIFT_WEIGHT = 1200.0
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-Startup-NoDrift",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=40,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+    lateral_drift_weight=_DRIFT_WEIGHT,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=40,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+    lateral_drift_weight=_DRIFT_WEIGHT,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V7-NoDrift",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=40,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+    lateral_drift_weight=_DRIFT_WEIGHT,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=40,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+    lateral_drift_weight=_DRIFT_WEIGHT,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
 register_mjlab_task(
   task_id="Mjlab-Tracking-Flat-Tocabi",
   env_cfg=tocabi_flat_tracking_env_cfg(),

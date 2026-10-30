@@ -39,6 +39,7 @@ from .actions import LowerBodyAction
 
 if TYPE_CHECKING:
   from mjlab.envs import ManagerBasedRlEnv
+  from mjlab.managers.reward_manager import RewardTermCfg
 
 _DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
 
@@ -665,6 +666,83 @@ def startup_weight_shift_reward(
   stance = force.gather(1, term.first_stance_foot.unsqueeze(1))[:, 0]
   share = stance / (force.sum(dim=1) + 1e-6)
   return share * term.phase_scale * term.in_startup.float()
+
+
+class lateral_drift_penalty:
+  """Penalize the lateral velocity error averaged over one gait cycle.
+
+  The per-step lateral sway of the pelvis averages out over a cycle (two steps, the
+  env's own period), so this charges only a steady sideways drift that the
+  instantaneous velocity tracking barely notices. The error is measured in the yaw
+  frame against the twist command; the penalty is its squared cycle mean, 0 during
+  startup and until a full cycle has been walked.
+  """
+
+  def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRlEnv):
+    term = _phase_term(env, cfg.params["command_name"])
+    self._period = term.full_step_period[:, 0]
+    n, size = env.num_envs, int(self._period.max().item())
+    self._buf = torch.zeros(n, size, device=env.device)
+    self._age = torch.arange(size, device=env.device)
+    self._head = 0
+    self._count = torch.zeros(n, dtype=torch.long, device=env.device)
+
+  def __call__(
+    self,
+    env: ManagerBasedRlEnv,
+    command_name: str,
+    twist_command_name: str = "twist",
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  ) -> torch.Tensor:
+    asset: Entity = env.scene[asset_cfg.name]
+    term = _phase_term(env, command_name)
+    vel = quat_apply_inverse(
+      yaw_quat(asset.data.root_link_quat_w), asset.data.root_link_lin_vel_w
+    )
+    command = env.command_manager.get_command(twist_command_name)
+    assert command is not None
+    error = vel[:, 1] - command[:, 1]
+    size = self._buf.shape[1]
+    self._head = (self._head + 1) % size
+    self._buf[:, self._head] = error
+    walking = ~term.in_startup
+    self._count = torch.where(walking, self._count + 1, 0)
+    # Entries written within the last period steps, newest has age 0.
+    age = (self._head - self._age) % size
+    window = age.unsqueeze(0) < self._period.unsqueeze(1)
+    mean = (self._buf * window).sum(dim=1) / self._period
+    full = self._count >= self._period
+    return -torch.square(mean) * full.float()
+
+  def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
+    if env_ids is None:
+      env_ids = slice(None)
+    self._count[env_ids] = 0
+
+
+def startup_com_shift_reward(
+  env: ManagerBasedRlEnv,
+  command_name: str,
+  asset_cfg: SceneEntityCfg,
+  shift: float = 0.04,
+  sigma: float = 0.03,
+) -> torch.Tensor:
+  """During startup, reward the CoM for moving toward the first stance foot.
+
+  In the yaw frame, relative to the midpoint of the feet (``asset_cfg`` bodies), the
+  reference ramps with the clock scale r from 0 to ``shift`` on the stance side, so
+  the weight shift is a visible body motion rather than only a change of the foot
+  loads.
+  """
+  asset: Entity = env.scene[asset_cfg.name]
+  com_w = asset.data.data.subtree_com[:, asset.data.indexing.root_body_id]
+  mid_w = asset.data.body_link_pos_w[:, asset_cfg.body_ids].mean(dim=1)
+  rel = quat_apply_inverse(yaw_quat(asset.data.root_link_quat_w), com_w - mid_w)
+  term = _phase_term(env, command_name)
+  side = 1.0 - 2.0 * term.first_stance_foot.float()  # +y toward the left foot
+  target = side * shift * term.phase_scale
+  reward = torch.exp(-torch.square((rel[:, 1] - target) / sigma))
+  return reward * term.in_startup.float()
 
 
 def termination_penalty(env: ManagerBasedRlEnv) -> torch.Tensor:

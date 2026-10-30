@@ -90,6 +90,9 @@ def tocabi_hojae_gomtang_flat_env_cfg(
   ankle_roll_weight: float = 0.0,
   base_roll_weight: float = 0.0,
   ankle_roll_friction_range: tuple[float, float] | None = None,
+  hip_roll_friction_range: tuple[float, float] | None = None,
+  startup_com_shift: float | None = None,
+  lateral_drift_weight: float = 0.0,
 ) -> ManagerBasedRlEnvCfg:
   """Create the TOCABI flat velocity configuration with the HojaeGomtang MDP.
 
@@ -114,6 +117,12 @@ def tocabi_hojae_gomtang_flat_env_cfg(
     ankle_roll_friction_range: Separate frictionloss range [N·m] for the ankle
       roll joints, e.g. (0, 25) to cover the 22 N·m of the deployment MJCF. The
       other leg joints keep their range (None: one range for all leg joints).
+    hip_roll_friction_range: Separate frictionloss range [N·m] for the hip roll
+      joints, like ``ankle_roll_friction_range``.
+    startup_com_shift: Add a reward for the CoM moving this far [m] toward the
+      first stance foot during startup (None disables; needs ``startup_steps``).
+    lateral_drift_weight: Weight of a squared penalty on the lateral velocity
+      error averaged over a gait cycle (0 disables).
   """
   cfg = tocabi_flat_env_cfg(play=play, encoder_bias=encoder_bias)
 
@@ -396,6 +405,17 @@ def tocabi_hojae_gomtang_flat_env_cfg(
       weight=30.0,
       params={**phase, **feet_sensor},
     )
+  if lateral_drift_weight > 0.0:
+    cfg.rewards["lateral_drift"] = RewardTermCfg(
+      func=hg.lateral_drift_penalty, weight=lateral_drift_weight, params={**phase}
+    )
+  if startup_com_shift is not None:
+    assert startup_steps > 0, "startup_com_shift needs startup_steps > 0."
+    cfg.rewards["startup_com_shift"] = RewardTermCfg(
+      func=hg.startup_com_shift_reward,
+      weight=30.0,
+      params={**phase, "asset_cfg": FEET, "shift": startup_com_shift},
+    )
 
   ##
   # Terminations
@@ -444,21 +464,26 @@ def tocabi_hojae_gomtang_flat_env_cfg(
       },
     )
 
-  if ankle_roll_friction_range is not None:
+  separate = {
+    name: (joints, ranges)
+    for name, joints, ranges in (
+      ("ankle_roll_friction", ANKLE_ROLL, ankle_roll_friction_range),
+      ("hip_roll_friction", HIP_ROLL, hip_roll_friction_range),
+    )
+    if ranges is not None
+  }
+  if separate:
     leg_friction = cfg.events["leg_friction"]
+    own = {n for joints, _ in separate.values() for n in joints.joint_names}  # type: ignore[union-attr]
     leg_friction.params["asset_cfg"] = SceneEntityCfg(
-      "robot",
-      joint_names=tuple(n for n in LEG_JOINT_NAMES if "AnkleRoll" not in n),
+      "robot", joint_names=tuple(n for n in LEG_JOINT_NAMES if n not in own)
     )
-    cfg.events["ankle_roll_friction"] = EventTermCfg(
-      mode="reset",
-      func=leg_friction.func,
-      params={
-        **leg_friction.params,
-        "asset_cfg": ANKLE_ROLL,
-        "ranges": ankle_roll_friction_range,
-      },
-    )
+    for name, (joints, ranges) in separate.items():
+      cfg.events[name] = EventTermCfg(
+        mode="reset",
+        func=leg_friction.func,
+        params={**leg_friction.params, "asset_cfg": joints, "ranges": ranges},
+      )
 
   cfg.curriculum = {}
   cfg.episode_length_s = int(1e9) if play else 20.0

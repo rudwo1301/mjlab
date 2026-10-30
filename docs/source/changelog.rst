@@ -54,6 +54,12 @@ Added
 - Added ``-Startup-AnkleFric`` and ``-V7-AnkleFric`` HojaeGomtang tasks, which
   randomize ankle roll frictionloss over 0-25 N·m (``ankle_roll_friction_range``)
   to cover the deployment simulator.
+- Added HojaeGomtang task variants built on the ankle friction tasks:
+  ``-HipFric`` also randomizes hip roll frictionloss over 10-25 N·m
+  (``hip_roll_friction_range``); ``-ShiftStartup`` lengthens the startup to 0.8 s
+  and rewards the CoM for moving 4 cm toward the first stance foot
+  (``startup_com_shift``); ``-NoDrift`` adds a penalty on the lateral velocity
+  error averaged over a gait cycle (``lateral_drift_weight``).
 - Added ``Mjlab-Tracking-Flat-Tocabi`` and ``-Privileged``, motion tracking for
   TOCABI with the HojaeGomtang robot, actions and randomization, and a slip
   penalty on the reference's planted feet. The motion file is passed with
