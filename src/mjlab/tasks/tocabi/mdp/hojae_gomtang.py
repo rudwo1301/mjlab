@@ -720,6 +720,44 @@ class lateral_drift_penalty:
     self._count[env_ids] = 0
 
 
+def step_width_tracking_reward(
+  env: ManagerBasedRlEnv,
+  command_name: str,
+  asset_cfg: SceneEntityCfg,
+  width: float = 0.21,
+  sigma: float = 0.03,
+  twist_command_name: str = "twist",
+) -> torch.Tensor:
+  """Reward the swing foot for heading to its lateral target beside the stance foot.
+
+  In the stance foot's yaw frame the target lateral offset is ``+width`` for the
+  left foot and ``-width`` for the right, plus ``vy * T`` with T the step duration,
+  so stepping in place keeps both feet where they are. The reward ramps in with
+  the swing (smoothstep of its progress), leaving the start of the swing free, and
+  is 0 during startup. ``asset_cfg`` holds the (left, right) foot bodies.
+  """
+  asset: Entity = env.scene[asset_cfg.name]
+  term = _phase_term(env, command_name)
+  command = env.command_manager.get_command(twist_command_name)
+  assert command is not None
+  phase = term.phase
+  left_swing = phase < 0.5
+  progress = torch.remainder(phase, 0.5) / 0.5
+  weight = progress * progress * (3.0 - 2.0 * progress)
+  pos = asset.data.body_link_pos_w[:, asset_cfg.body_ids]
+  quat = asset.data.body_link_quat_w[:, asset_cfg.body_ids]
+  swing = torch.where(left_swing, 0, 1)
+  rows = torch.arange(env.num_envs, device=env.device)
+  rel = quat_apply_inverse(
+    yaw_quat(quat[rows, 1 - swing]), pos[rows, swing] - pos[rows, 1 - swing]
+  )
+  step_time = term.full_step_period[:, 0].float() / 2.0 * env.step_dt
+  side = torch.where(left_swing, 1.0, -1.0)
+  target = side * width + command[:, 1] * step_time
+  reward = torch.exp(-torch.square((rel[:, 1] - target) / sigma))
+  return reward * weight * (~term.in_startup).float()
+
+
 def startup_com_shift_reward(
   env: ManagerBasedRlEnv,
   command_name: str,

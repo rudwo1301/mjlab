@@ -60,6 +60,9 @@ Added
   and rewards the CoM for moving 4 cm toward the first stance foot
   (``startup_com_shift``); ``-NoDrift`` adds a penalty on the lateral velocity
   error averaged over a gait cycle (``lateral_drift_weight``).
+- Added ``-V7-StepWidth`` and ``-Vanilla-StepWidth`` HojaeGomtang tasks, which
+  reward the swing foot for heading to a lateral target beside the stance foot
+  (``step_width``), so that stepping in place does not wander sideways.
 - Added ``Mjlab-Tracking-Flat-Tocabi`` and ``-Privileged``, motion tracking for
   TOCABI with the HojaeGomtang robot, actions and randomization, and a slip
   penalty on the reference's planted feet. The motion file is passed with

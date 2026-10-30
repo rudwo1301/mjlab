@@ -345,6 +345,62 @@ register_mjlab_task(
   runner_cls=HojaeGomtangOnPolicyRunner,
 )
 
+# ShiftStartup plus a reward for each step landing 21 cm beside the stance foot (the
+# mean touchdown width), against step-to-step placement scatter that adds up to a
+# sideways drift. "Vanilla" is the original HojaeGomtang reward set (the -Startup
+# tasks above), as opposed to the V7 rewards.
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-Vanilla-StepWidth",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=40,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+    step_width=0.21,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=40,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+    step_width=0.21,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V7-StepWidth",
+  env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    startup_steps=40,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+    step_width=0.21,
+  ),
+  play_env_cfg=tocabi_hojae_gomtang_flat_env_cfg(
+    play=True,
+    startup_steps=40,
+    linear_hip_roll=True,
+    stance_hip_roll_bound=0.15,
+    com_sway_amplitude=0.04,
+    ankle_roll_weight=200.0,
+    base_roll_weight=1000.0,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+    step_width=0.21,
+  ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
 register_mjlab_task(
   task_id="Mjlab-Tracking-Flat-Tocabi",
   env_cfg=tocabi_flat_tracking_env_cfg(),

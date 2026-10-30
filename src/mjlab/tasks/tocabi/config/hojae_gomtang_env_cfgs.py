@@ -93,6 +93,7 @@ def tocabi_hojae_gomtang_flat_env_cfg(
   hip_roll_friction_range: tuple[float, float] | None = None,
   startup_com_shift: float | None = None,
   lateral_drift_weight: float = 0.0,
+  step_width: float | None = None,
 ) -> ManagerBasedRlEnvCfg:
   """Create the TOCABI flat velocity configuration with the HojaeGomtang MDP.
 
@@ -123,6 +124,8 @@ def tocabi_hojae_gomtang_flat_env_cfg(
       first stance foot during startup (None disables; needs ``startup_steps``).
     lateral_drift_weight: Weight of a squared penalty on the lateral velocity
       error averaged over a gait cycle (0 disables).
+    step_width: Add a reward for the swing foot landing this far [m] beside the
+      stance foot, plus vy times the step time (None disables).
   """
   cfg = tocabi_flat_env_cfg(play=play, encoder_bias=encoder_bias)
 
@@ -404,6 +407,12 @@ def tocabi_hojae_gomtang_flat_env_cfg(
       func=hg.startup_weight_shift_reward,
       weight=30.0,
       params={**phase, **feet_sensor},
+    )
+  if step_width is not None:
+    cfg.rewards["step_width_tracking"] = RewardTermCfg(
+      func=hg.step_width_tracking_reward,
+      weight=10.0,
+      params={**phase, "asset_cfg": FEET, "width": step_width},
     )
   if lateral_drift_weight > 0.0:
     cfg.rewards["lateral_drift"] = RewardTermCfg(
