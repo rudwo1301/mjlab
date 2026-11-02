@@ -128,6 +128,27 @@ def test_linear_hip_roll_penalty_charges_only_the_excess(env) -> None:
   env.reset()
 
 
+def test_velocity_command_deadband_is_per_axis(env) -> None:
+  term = env.command_manager.get_term("twist")
+  assert isinstance(term, hg.HojaeGomtangVelocityCommand)
+  ranges = term.cfg.ranges
+  saved = (ranges.lin_vel_x, ranges.lin_vel_y, ranges.ang_vel_z)
+  env_ids = torch.arange(env.num_envs, device=env.device)
+  try:
+    # A pure lateral command survives, whatever the size of the zeroed vx.
+    ranges.lin_vel_x, ranges.lin_vel_y, ranges.ang_vel_z = (
+      (0.05, 0.05),
+      (0.15, 0.15),
+      (0.05, 0.05),
+    )
+    term._resample_command(env_ids)
+    expected = torch.tensor([0.0, 0.15, 0.0], device=env.device)
+    assert torch.allclose(term.vel_command_b, expected.expand(env.num_envs, 3))
+  finally:
+    ranges.lin_vel_x, ranges.lin_vel_y, ranges.ang_vel_z = saved
+    term._resample_command(env_ids)
+
+
 def test_env_steps_with_finite_rewards(env) -> None:
   env.reset()
   action = _default_pose_action(env)

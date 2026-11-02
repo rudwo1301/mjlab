@@ -74,6 +74,10 @@ Added
 Changed
 ^^^^^^^
 
+- The HojaeGomtang velocity command applies its deadband per axis, at 0.1 m/s on
+  ``vx`` and ``vy``, instead of 0.2 m/s on the ``(vx, vy)`` norm, which zeroed every
+  pure lateral command. ``lin_vel_threshold`` is replaced by
+  ``lin_vel_x_threshold`` and ``lin_vel_y_threshold``.
 - Heightfield terrains now lay hfield rows along y and columns along x, as MuJoCo
   expects. Non-square sub-terrains are no longer stretched with flat patches off the
   terrain; square ones are mirrored across x=y for a given seed.

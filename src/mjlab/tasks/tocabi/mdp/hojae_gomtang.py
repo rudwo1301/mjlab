@@ -71,18 +71,20 @@ class HojaeGomtangVelocityCommand(UniformVelocityCommand):
     cfg = self.cfg
     assert isinstance(cfg, HojaeGomtangVelocityCommandCfg)
     cmd = self.vel_command_b[env_ids]
-    keep_lin = torch.norm(cmd[:, :2], dim=1) > cfg.lin_vel_threshold
-    keep_ang = torch.abs(cmd[:, 2]) > cfg.ang_vel_threshold
-    cmd[:, :2] *= keep_lin.unsqueeze(1)
-    cmd[:, 2] *= keep_ang
+    thresholds = cmd.new_tensor(
+      [cfg.lin_vel_x_threshold, cfg.lin_vel_y_threshold, cfg.ang_vel_threshold]
+    )
+    cmd *= torch.abs(cmd) > thresholds
     self.vel_command_b[env_ids] = cmd
     self.vel_command_w[env_ids] = cmd
 
 
 @dataclass(kw_only=True)
 class HojaeGomtangVelocityCommandCfg(UniformVelocityCommandCfg):
-  lin_vel_threshold: float = 0.2
-  """Linear commands with a smaller xy norm are set to zero [m/s]."""
+  lin_vel_x_threshold: float = 0.1
+  """Forward commands with a smaller magnitude are set to zero [m/s]."""
+  lin_vel_y_threshold: float = 0.1
+  """Lateral commands with a smaller magnitude are set to zero [m/s]."""
   ang_vel_threshold: float = 0.1
   """Yaw-rate commands with a smaller magnitude are set to zero [rad/s]."""
 
