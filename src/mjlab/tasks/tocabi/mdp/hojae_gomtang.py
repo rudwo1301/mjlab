@@ -75,6 +75,13 @@ class HojaeGomtangVelocityCommand(UniformVelocityCommand):
       [cfg.lin_vel_x_threshold, cfg.lin_vel_y_threshold, cfg.ang_vel_threshold]
     )
     cmd *= torch.abs(cmd) > thresholds
+    lateral = torch.rand(len(env_ids), device=cmd.device) < cfg.rel_lateral_envs
+    if lateral.any():
+      lo, hi = cfg.lin_vel_y_threshold, cfg.ranges.lin_vel_y[1]
+      speed = torch.empty(int(lateral.sum()), device=cmd.device).uniform_(lo, hi)
+      sign = torch.randint(0, 2, speed.shape, device=cmd.device) * 2.0 - 1.0
+      cmd[lateral] = 0.0
+      cmd[lateral, 1] = sign * speed
     self.vel_command_b[env_ids] = cmd
     self.vel_command_w[env_ids] = cmd
 
@@ -87,6 +94,8 @@ class HojaeGomtangVelocityCommandCfg(UniformVelocityCommandCfg):
   """Lateral commands with a smaller magnitude are set to zero [m/s]."""
   ang_vel_threshold: float = 0.1
   """Yaw-rate commands with a smaller magnitude are set to zero [rad/s]."""
+  rel_lateral_envs: float = 0.0
+  """Fraction of resamples forced to a pure lateral command above the deadband."""
 
   def build(self, env: ManagerBasedRlEnv) -> HojaeGomtangVelocityCommand:
     return HojaeGomtangVelocityCommand(self, env)
@@ -722,19 +731,31 @@ class lateral_drift_penalty:
     self._count[env_ids] = 0
 
 
+def _step_width_target(
+  side: torch.Tensor, vy: torch.Tensor, step_time: torch.Tensor, width: float
+) -> torch.Tensor:
+  """Signed swing foot offset from the stance foot; ``side`` is +1 for a left swing."""
+  return side * (width + 2.0 * torch.clamp(side * vy, min=0.0) * step_time)
+
+
 def step_width_tracking_reward(
   env: ManagerBasedRlEnv,
   command_name: str,
   asset_cfg: SceneEntityCfg,
   width: float = 0.21,
   sigma: float = 0.03,
+  sigma_per_vy: float = 0.0,
   twist_command_name: str = "twist",
 ) -> torch.Tensor:
   """Reward the swing foot for heading to its lateral target beside the stance foot.
 
   In the stance foot's yaw frame the target lateral offset is ``+width`` for the
-  left foot and ``-width`` for the right, plus ``vy * T`` with T the step duration,
-  so stepping in place keeps both feet where they are. The reward ramps in with
+  left foot and ``-width`` for the right. Under a lateral command the foot on the
+  leading side steps ``2 * vy * T`` wider, with T the step duration, and the trailing
+  foot closes back to ``width``, so the feet never go narrower than ``width`` while
+  covering ``vy`` over a gait cycle. The kernel widens to
+  ``sigma + sigma_per_vy * |vy|`` so that a wide lateral target stays reachable from
+  the standing width. The reward ramps in with
   the swing (smoothstep of its progress), leaving the start of the swing free, and
   is 0 during startup. ``asset_cfg`` holds the (left, right) foot bodies.
   """
@@ -755,8 +776,9 @@ def step_width_tracking_reward(
   )
   step_time = term.full_step_period[:, 0].float() / 2.0 * env.step_dt
   side = torch.where(left_swing, 1.0, -1.0)
-  target = side * width + command[:, 1] * step_time
-  reward = torch.exp(-torch.square((rel[:, 1] - target) / sigma))
+  target = _step_width_target(side, command[:, 1], step_time, width)
+  kernel = sigma + sigma_per_vy * torch.abs(command[:, 1])
+  reward = torch.exp(-torch.square((rel[:, 1] - target) / kernel))
   return reward * weight * (~term.in_startup).float()
 
 

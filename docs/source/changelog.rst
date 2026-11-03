@@ -63,6 +63,9 @@ Added
 - Added ``-V7-StepWidth`` and ``-Vanilla-StepWidth`` HojaeGomtang tasks, which
   reward the swing foot for heading to a lateral target beside the stance foot
   (``step_width``), so that stepping in place does not wander sideways.
+- Added ``-V7-Lateral`` and ``-Vanilla-Lateral`` HojaeGomtang tasks for pure lateral
+  walking: a step width kernel that widens with the lateral command
+  (``sigma_per_vy``) and forced pure lateral commands (``rel_lateral_envs``).
 - Added ``Mjlab-Tracking-Flat-Tocabi`` and ``-Privileged``, motion tracking for
   TOCABI with the HojaeGomtang robot, actions and randomization, and a slip
   penalty on the reference's planted feet. The motion file is passed with
@@ -74,6 +77,9 @@ Added
 Changed
 ^^^^^^^
 
+- The HojaeGomtang lateral command range is now +-0.15 m/s, and ``step_width`` widens
+  only the leading foot's target under a lateral command, by ``2 * vy * T``, instead
+  of pushing the trailing foot inside the foot-distance termination.
 - The HojaeGomtang velocity command applies its deadband per axis, at 0.1 m/s on
   ``vx`` and ``vy``, instead of 0.2 m/s on the ``(vx, vy)`` norm, which zeroed every
   pure lateral command. ``lin_vel_threshold`` is replaced by

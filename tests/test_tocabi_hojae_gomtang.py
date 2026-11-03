@@ -149,6 +149,32 @@ def test_velocity_command_deadband_is_per_axis(env) -> None:
     term._resample_command(env_ids)
 
 
+def test_step_width_target_keeps_the_trailing_foot_wide() -> None:
+  side = torch.tensor([1.0, -1.0, 1.0, -1.0])
+  vy = torch.tensor([0.1, 0.1, -0.1, 0.0])
+  target = hg._step_width_target(side, vy, torch.tensor(0.8), 0.21)
+  expected = torch.tensor([0.37, -0.21, 0.21, -0.21])
+  torch.testing.assert_close(target, expected)
+
+
+def test_rel_lateral_envs_forces_pure_lateral_commands(env) -> None:
+  term = env.command_manager.get_term("twist")
+  assert isinstance(term, hg.HojaeGomtangVelocityCommand)
+  cfg = term.cfg
+  assert isinstance(cfg, hg.HojaeGomtangVelocityCommandCfg)
+  env_ids = torch.arange(env.num_envs, device=env.device)
+  cfg.rel_lateral_envs = 1.0
+  try:
+    term._resample_command(env_ids)
+    cmd = term.vel_command_b
+    assert torch.all(cmd[:, [0, 2]] == 0.0)
+    assert torch.all(cmd[:, 1].abs() >= cfg.lin_vel_y_threshold)
+    assert torch.all(cmd[:, 1].abs() <= cfg.ranges.lin_vel_y[1])
+  finally:
+    cfg.rel_lateral_envs = 0.0
+    term._resample_command(env_ids)
+
+
 def test_env_steps_with_finite_rewards(env) -> None:
   env.reset()
   action = _default_pose_action(env)

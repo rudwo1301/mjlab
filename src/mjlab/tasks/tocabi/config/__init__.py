@@ -1,3 +1,4 @@
+from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.tasks.registry import register_mjlab_task
 from mjlab.tasks.tocabi.rl import HojaeGomtangOnPolicyRunner
 from mjlab.tasks.tracking.rl import MotionTrackingOnPolicyRunner
@@ -397,6 +398,42 @@ register_mjlab_task(
     startup_com_shift=0.04,
     step_width=0.21,
   ),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+
+def _lateral_env_cfg(play: bool = False, v7: bool = False) -> ManagerBasedRlEnvCfg:
+  """StepWidth task with a wider kernel under vy and forced pure lateral commands."""
+  return tocabi_hojae_gomtang_flat_env_cfg(
+    play=play,
+    startup_steps=40,
+    linear_hip_roll=v7,
+    stance_hip_roll_bound=0.15 if v7 else None,
+    com_sway_amplitude=0.04 if v7 else None,
+    ankle_roll_weight=200.0 if v7 else 0.0,
+    base_roll_weight=1000.0 if v7 else 0.0,
+    ankle_roll_friction_range=_ANKLE_FRICTION,
+    hip_roll_friction_range=_HIP_FRICTION,
+    startup_com_shift=0.04,
+    step_width=0.21,
+    step_width_sigma_per_vy=0.8,
+    rel_lateral_envs=0.15,
+  )
+
+
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-Vanilla-Lateral",
+  env_cfg=_lateral_env_cfg(),
+  play_env_cfg=_lateral_env_cfg(play=True),
+  rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
+  runner_cls=HojaeGomtangOnPolicyRunner,
+)
+
+register_mjlab_task(
+  task_id="Mjlab-Velocity-Flat-Tocabi-HojaeGomtang-V7-Lateral",
+  env_cfg=_lateral_env_cfg(v7=True),
+  play_env_cfg=_lateral_env_cfg(play=True, v7=True),
   rl_cfg=tocabi_hojae_gomtang_ppo_runner_cfg(),
   runner_cls=HojaeGomtangOnPolicyRunner,
 )

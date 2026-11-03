@@ -94,6 +94,8 @@ def tocabi_hojae_gomtang_flat_env_cfg(
   startup_com_shift: float | None = None,
   lateral_drift_weight: float = 0.0,
   step_width: float | None = None,
+  step_width_sigma_per_vy: float = 0.0,
+  rel_lateral_envs: float = 0.0,
 ) -> ManagerBasedRlEnvCfg:
   """Create the TOCABI flat velocity configuration with the HojaeGomtang MDP.
 
@@ -125,7 +127,11 @@ def tocabi_hojae_gomtang_flat_env_cfg(
     lateral_drift_weight: Weight of a squared penalty on the lateral velocity
       error averaged over a gait cycle (0 disables).
     step_width: Add a reward for the swing foot landing this far [m] beside the
-      stance foot, plus vy times the step time (None disables).
+      stance foot, the leading foot wider under a lateral command (None disables).
+    step_width_sigma_per_vy: Widen the step width kernel by this much [m] per m/s
+      of lateral command.
+    rel_lateral_envs: Fraction of training resamples forced to a pure lateral
+      command. Off in play.
   """
   cfg = tocabi_flat_env_cfg(play=play, encoder_bias=encoder_bias)
 
@@ -266,7 +272,7 @@ def tocabi_hojae_gomtang_flat_env_cfg(
       heading_command=False,
       debug_vis=True,
       ranges=mdp.UniformVelocityCommandCfg.Ranges(
-        lin_vel_x=(-0.5, 0.5), lin_vel_y=(-0.2, 0.2), ang_vel_z=(-0.6, 0.6)
+        lin_vel_x=(-0.5, 0.5), lin_vel_y=(-0.15, 0.15), ang_vel_z=(-0.6, 0.6)
       ),
     ),
     # Sampled only at reset: per-env step period and start phase.
@@ -412,7 +418,12 @@ def tocabi_hojae_gomtang_flat_env_cfg(
     cfg.rewards["step_width_tracking"] = RewardTermCfg(
       func=hg.step_width_tracking_reward,
       weight=10.0,
-      params={**phase, "asset_cfg": FEET, "width": step_width},
+      params={
+        **phase,
+        "asset_cfg": FEET,
+        "width": step_width,
+        "sigma_per_vy": step_width_sigma_per_vy,
+      },
     )
   if lateral_drift_weight > 0.0:
     cfg.rewards["lateral_drift"] = RewardTermCfg(
@@ -458,6 +469,9 @@ def tocabi_hojae_gomtang_flat_env_cfg(
   ##
 
   if not play:
+    twist = cfg.commands["twist"]
+    assert isinstance(twist, hg.HojaeGomtangVelocityCommandCfg)
+    twist.rel_lateral_envs = rel_lateral_envs
     cfg.events["scheduled_push"] = EventTermCfg(
       func=hg.scheduled_push,
       mode="step",
